@@ -1,38 +1,38 @@
 package Actors
 
-import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.Behaviors
+import ActorMessages.{CreateUserApiActor, GetCallHistoryApiActor, GetUsersApiActor, SimulateCallApiActor}
+import Models.{User, UserDB}
+import akka.actor.AbstractActor.Receive
+import akka.actor.{Actor, ActorRef, ActorSystem}
+import io.circe.Encoder.AsObject.importedAsObjectEncoder
+import io.circe.generic.auto.exportEncoder
 
-object APIActor {
-  sealed trait APIActorMessages
-  case class SimulateCall(time:Int) extends APIActorMessages
-  case class CreateUser() extends APIActorMessages
-  case class GetUsers(pageNumber:Int,pageSize:Int) extends APIActorMessages
-  case class GetCallHistory()extends APIActorMessages
+import io.circe.syntax.EncoderOps
 
-  val apiActor:Behavior[APIActorMessages]=Behaviors.setup{context=>
-    Behaviors.receiveMessage{
-      case SimulateCall(time)=>{
-        println("simulating "+time.toString+"seconds")
-        Behaviors.same
-      }
-      case CreateUser()=>{
-        println("Creating")
-        Behaviors.same
-      }
-      case GetUsers(pageNumber,pageSize)=>{
-        println("getting"+pageNumber.toString+"-pageNumber "+pageSize.toString+"-pageSize of users")
-        Behaviors.same
-      }
-      case GetCallHistory()=>{
-        println("getting call history")
-        Behaviors.same
-      }
-      case _=>{
-        println("her ego znaet")
-        Behaviors.same
-      }
+
+class ApiActor extends Actor {
+
+  override def receive: Receive = {
+    case SimulateCallApiActor(time) => {
+      println("simulating " + time.toString + "seconds")
+      Thread.sleep(time*1000)
+      sender()!"Call ended"
+    }
+    case CreateUserApiActor(userID, name, phoneNumber) => {
+      println("Creating User with name=" + name + " and number=" + phoneNumber)
+      UserDB.users += User(userID, name, phoneNumber)
+    }
+    case GetUsersApiActor(pageNumber, pageSize) => {
+      val users=UserDB.users.toList
+      val json=users.asJson
+      sender()!json
+    }
+    case GetCallHistoryApiActor() => {
+      println("getting call history")
+    }
+    case _ => {
+      println("ошибка звонка")
     }
   }
-
 }
+
